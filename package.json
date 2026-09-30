@@ -1,0 +1,21 @@
+{
+  "name": "plus18-video-pool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Paste Instagram Reel links or forward them via a Telegram bot into a shared pool, then batch-download or re-template them.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1106.0",
+    "@napi-rs/canvas": "^1.0.5",
+    "archiver": "^7.0.1",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

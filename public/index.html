@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>+18 Video Pool</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --card: #12151c;
+    --card2: #171b24;
+    --border: #232836;
+    --text: #e8eaf0;
+    --muted: #8891a3;
+    --primary: #6d5ef5;
+    --danger: #dc3232;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 18px; margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+  input[type="password"], input[type="text"], textarea {
+    width: 100%; background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 10px 12px; font-family: inherit; font-size: 14px;
+  }
+  textarea { resize: vertical; }
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card2); color: var(--text); padding: 10px 14px;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; width: 100%; padding: 12px; margin-top: 12px; }
+  .btn-icon {
+    width: 22px; height: 22px; border-radius: 5px; background: rgba(0,0,0,0.55); border: none;
+    display: flex; align-items: center; justify-content: center; color: #fff; padding: 0;
+  }
+  .row { display: flex; gap: 8px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab { flex: 1; padding: 8px; border-radius: 8px; text-align: center; background: var(--card2); border: 1px solid var(--border); cursor: pointer; }
+  .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .toggle { width: 40px; height: 22px; border-radius: 11px; background: var(--card2); border: 1px solid var(--border); position: relative; cursor: pointer; flex-shrink: 0; }
+  .toggle.active { background: var(--primary); border-color: var(--primary); }
+  .toggle-dot { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+  .toggle.active .toggle-dot { left: 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .fade-in { animation: fadeIn 0.15s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 420px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .tpl-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .tpl-row-info { flex: 1; min-width: 0; }
+  .tpl-row-title { font-size: 13px; font-weight: 600; }
+  .tpl-row-actions { display: flex; gap: 4px; }
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #login-screen .card { width: 320px; }
+  a { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="display:none;">
+  <div class="card">
+    <h1>+18 Video Pool</h1>
+    <p class="hint">Enter the admin password to continue.</p>
+    <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter') login()">
+    <button class="btn-primary" onclick="login()">Log in</button>
+    <p class="hint" id="login-error" style="color:var(--danger);margin-top:10px;"></p>
+  </div>
+</div>
+
+<div id="app-screen" style="display:none;">
+  <div class="wrap">
+    <h1>+18 Video Pool</h1>
+    <div class="card">
+      <div id="panel-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Accounts (template) management modal -->
+<div id="accounts-modal-overlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeAccountsModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <strong>Manage Templates</strong>
+      <button class="btn-icon" style="background:none;color:var(--muted);" onclick="closeAccountsModal()">&times;</button>
+    </div>
+    <div class="row" style="margin-bottom:12px;">
+      <input type="text" id="accounts-modal-new-input" placeholder="New account label" onkeydown="if(event.key==='Enter') addAccountFromModal()">
+      <button onclick="addAccountFromModal()">Add</button>
+    </div>
+    <div id="accounts-modal-list"></div>
+    <p id="accounts-modal-empty" class="hint" style="display:none;">No accounts yet — add one above.</p>
+  </div>
+</div>
+<input type="file" id="settings-background-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="uploadBackground(event)">
+
+<script>
+const COPY_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
+const UPLOAD_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+function downloadBlob(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+async function saveFile(blob, filename) {
+  if (isMobileDevice()) {
+    try {
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  downloadBlob(blob, filename);
+}
+// R2's own domain is cross-origin from wherever this app is served, and
+// that bucket has no CORS policy -- a direct fetch() fails every time, and
+// a plain <a download> silently degrades to just navigating there instead
+// of saving. Routed through this app's own download-proxy endpoint
+// instead (same-origin, no CORS problem).
+async function downloadFile(url, filename) {
+  try {
+    const res = await fetch(`/api/download-proxy?url=${encodeURIComponent(url)}`);
+    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+    const blob = await res.blob();
+    await saveFile(blob, filename);
+  } catch (err) {
+    window.open(url, '_blank');
+  }
+}
+
+// --- Auth --------------------------------------------------------------
+async function checkSession() {
+  const res = await fetch('/api/session');
+  const { isAdmin } = await res.json();
+  document.getElementById('login-screen').style.display = isAdmin ? 'none' : 'flex';
+  document.getElementById('app-screen').style.display = isAdmin ? 'block' : 'none';
+  if (isAdmin) renderPanel();
+}
+async function login() {
+  const password = document.getElementById('login-password').value;
+  const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+  if (!res.ok) {
+    document.getElementById('login-error').textContent = 'Wrong password.';
+    return;
+  }
+  checkSession();
+}
+checkSession();
+
+// --- State ---------------------------------------------------------------
+const JOB_STATUS_LABELS = { queued: 'Queued', downloading: 'Downloading…', rendering: 'Rendering…', rendered: 'Rendered', failed: 'Failed' };
+const IN_PROGRESS_STATUSES = ['queued', 'downloading', 'rendering'];
+const BATCH_CONCURRENCY = 3;
+const DEFAULT_AVG_RENDER_MS = 18000;
+
+let state = {
+  accounts: [],
+  selectedAccountId: null, // null = raw/no-template mode
+  templatePickerOpen: false,
+  mirror: false,
+  linksText: '',
+  batchId: null,
+  jobs: [],
+  pollTimer: null,
+  etaDeadline: null,
+  etaTickTimer: null,
+  settingsUploadTargetId: null,
+  activeTab: 'batch', // 'batch' | 'pool'
+  pool: [],
+  poolLoaded: false,
+  selectedPoolIds: [],
+};
+
+function resetBatch() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  if (state.etaTickTimer) clearInterval(state.etaTickTimer);
+  state = { ...state, templatePickerOpen: false, mirror: false, linksText: '', batchId: null, jobs: [], pollTimer: null, etaDeadline: null, etaTickTimer: null };
+  renderPanel();
+}
+
+async function renderPanel() {
+  const container = document.getElementById('panel-body');
+  if (!container) return;
+  const linksEl = document.getElementById('links-input');
+  if (linksEl) state.linksText = linksEl.value;
+  if (state.batchId) {
+    container.innerHTML = resultsHtml();
+    return;
+  }
+  if (state.accounts.length === 0) {
+    const res = await fetch('/api/accounts');
+    state.accounts = res.ok ? await res.json() : [];
+  }
+  if (state.activeTab === 'pool' && !state.poolLoaded) await loadPool();
+  container.innerHTML = tabsHtml() + (state.activeTab === 'pool' ? poolHtml() : setupHtml());
+}
+
+function tabsHtml() {
+  return `
+    <div class="tabs">
+      <div class="tab${state.activeTab !== 'pool' ? ' active' : ''}" onclick="setTab('batch')">Batch</div>
+      <div class="tab${state.activeTab === 'pool' ? ' active' : ''}" onclick="setTab('pool')">Pool</div>
+    </div>
+  `;
+}
+function setTab(tab) { state.activeTab = tab; renderPanel(); }
+
+// --- Pool tab --------------------------------------------------------------
+async function loadPool() {
+  const res = await fetch('/api/pool');
+  state.pool = res.ok ? await res.json() : [];
+  state.poolLoaded = true;
+}
+async function refreshPool() { await loadPool(); renderPanel(); }
+
+// Thumbnail grid, not a link list -- built for volume: scanning posters is
+// far faster than reading raw URLs one at a time. Duplicate entries stay
+// in the grid, greyed with a badge, rather than hidden, so a repeat send
+// is still visibly acknowledged.
+function poolHtml() {
+  const refreshBtn = `<button style="flex:1;" onclick="refreshPool()">Refresh</button>`;
+  const hasMissing = state.pool.some(e => !e.thumbnailUrl);
+  const backfillBtn = hasMissing ? `<button style="flex:1;" onclick="backfillThumbnails()">Fetch missing thumbnails</button>` : '';
+  const toolbar = `<div class="row" style="margin-bottom:10px;">${refreshBtn}${backfillBtn}</div>`;
+  if (state.pool.length === 0) {
+    return `<div class="fade-in">${toolbar}<p class="hint" style="text-align:center;padding:24px 0;">No Reels received yet — send one to the pool bot to see it here.</p></div>`;
+  }
+  const selectedCount = state.selectedPoolIds.length;
+  const actionBar = selectedCount > 0 ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid var(--primary);border-radius:8px;margin-bottom:10px;">
+      <span style="font-size:12px;">${selectedCount} selected</span>
+      <button class="btn-primary" style="width:auto;margin:0;padding:6px 14px;font-size:12px;" onclick="sendSelectedPoolToBatch()">Send to Batch</button>
+    </div>
+  ` : '';
+  const cards = state.pool.map(entry => {
+    const isDup = entry.status === 'duplicate';
+    const isSelected = state.selectedPoolIds.includes(entry.id);
+    const when = new Date(entry.receivedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="fade-in" style="width:100px;position:relative;${isDup ? 'opacity:0.5;' : ''}">
+        <div onclick="togglePoolSelect('${entry.id}')" style="width:100px;height:178px;border-radius:6px;overflow:hidden;background:${entry.thumbnailUrl ? `url('${escapeHtml(entry.thumbnailUrl)}') center/cover` : 'var(--card2)'};cursor:pointer;border:2px solid ${isSelected ? 'var(--primary)' : (isDup ? 'var(--muted)' : 'transparent')};display:flex;align-items:center;justify-content:center;">
+          ${!entry.thumbnailUrl ? '<span class="spinner"></span>' : ''}
+        </div>
+        <div onclick="togglePoolSelect('${entry.id}')" title="Select" style="position:absolute;top:6px;left:6px;width:20px;height:20px;border-radius:5px;background:${isSelected ? 'var(--primary)' : 'rgba(0,0,0,0.55)'};border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:12px;">${isSelected ? '&#10003;' : ''}</div>
+        <button class="btn-icon" style="position:absolute;top:6px;right:32px;" onclick="copyPoolLink('${escapeHtml(entry.url)}')" title="Copy link">${COPY_ICON}</button>
+        <button class="btn-icon" style="position:absolute;top:6px;right:6px;" onclick="deletePoolEntry('${entry.id}')" title="Delete">${TRASH_ICON}</button>
+        ${isDup ? `<div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.02em;background:rgba(220,50,50,0.85);color:#fff;padding:2px 0;">DUPLICATE</div>` : ''}
+        <div style="font-size:10px;text-align:center;margin-top:4px;color:var(--muted);">${escapeHtml(when)}</div>
+      </div>
+    `;
+  }).join('');
+  return `<div class="fade-in">${toolbar}${actionBar}<div class="grid">${cards}</div></div>`;
+}
+
+function copyPoolLink(url) { navigator.clipboard.writeText(url).catch(() => {}); }
+
+async function deletePoolEntry(id) {
+  if (!confirm('Remove this from the pool?')) return;
+  await fetch(`/api/pool/${id}`, { method: 'DELETE' });
+  state.pool = state.pool.filter(e => e.id !== id);
+  state.selectedPoolIds = state.selectedPoolIds.filter(sid => sid !== id);
+  renderPanel();
+}
+
+async function backfillThumbnails() {
+  await fetch('/api/pool/backfill-thumbnails', { method: 'POST' });
+  alert('Fetching missing thumbnails in the background — hit Refresh in a bit to see them.');
+}
+
+function togglePoolSelect(id) {
+  const idx = state.selectedPoolIds.indexOf(id);
+  if (idx === -1) state.selectedPoolIds.push(id);
+  else state.selectedPoolIds.splice(idx, 1);
+  renderPanel();
+}
+
+// Appends selected links onto whatever's already in the Batch textarea
+// (doesn't overwrite) and switches to the Batch tab.
+function sendSelectedPoolToBatch() {
+  const selected = state.pool.filter(e => state.selectedPoolIds.includes(e.id));
+  if (selected.length === 0) return;
+  const existingLines = state.linksText.split('\n').map(l => l.trim()).filter(Boolean);
+  state.linksText = [...existingLines, ...selected.map(e => e.url)].join('\n');
+  state.selectedPoolIds = [];
+  state.activeTab = 'batch';
+  renderPanel();
+}
+
+// --- Batch tab ---------------------------------------------------------
+function setupHtml() {
+  const selectedAccount = state.accounts.find(a => a.id === state.selectedAccountId);
+
+  const templateSlotHtml = selectedAccount ? `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--card2);border:1px solid var(--primary);border-radius:8px;margin-bottom:14px;">
+      <div style="width:36px;height:64px;border-radius:6px;flex-shrink:0;background:${selectedAccount.backgroundUrl ? `url('${escapeHtml(selectedAccount.backgroundUrl)}') center/cover` : 'var(--card2)'};border:1px solid var(--border);"></div>
+      <div style="flex:1;font-size:12px;font-weight:700;">${escapeHtml(selectedAccount.label)}</div>
+      <button class="btn-icon" style="background:none;border:1px solid var(--border);color:var(--muted);" onclick="clearTemplate()" title="Remove template">&times;</button>
+    </div>
+  ` : `
+    <div onclick="openTemplatePicker()" style="border:1px dashed var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:14px;">
+      <span style="font-size:18px;">+</span><span style="font-size:12px;color:var(--muted);">Add Template</span>
+    </div>
+  `;
+
+  const rawHint = !selectedAccount ? `<p class="hint">No template added — Generate will just download the source video(s), untouched.</p>` : '';
+
+  return `
+    <div class="fade-in">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <p class="hint" style="margin:0;">Template</p>
+      <button class="btn-icon" style="background:none;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;" onclick="openAccountsModal()" title="Manage templates">${UPLOAD_ICON}</button>
+    </div>
+    ${templateSlotHtml}
+    ${rawHint}
+
+    ${selectedAccount ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">
+        <span style="font-size:12px;">Mirror clips <span style="color:var(--muted);">— helps avoid re-upload duplicate detection</span></span>
+        <div class="toggle${state.mirror ? ' active' : ''}" onclick="toggleMirror()"><div class="toggle-dot"></div></div>
+      </div>
+    ` : ''}
+
+    <p class="hint">Links</p>
+    <textarea id="links-input" rows="5" placeholder="Paste Instagram Reel links, one per line…" style="margin-bottom:14px;" oninput="onLinksInput()">${escapeHtml(state.linksText)}</textarea>
+
+    <button class="btn-primary" id="generate-btn" onclick="generate()">Generate</button>
+    ${templatePickerOverlayHtml()}
+    </div>
+  `;
+}
+
+function templatePickerOverlayHtml() {
+  if (!state.templatePickerOpen) return '';
+  const withBackground = state.accounts.filter(a => a.backgroundUrl);
+  const tiles = withBackground.map(a => `
+    <div onclick="pickTemplate('${a.id}')" title="${escapeHtml(a.label)}" style="flex-shrink:0;width:72px;aspect-ratio:9/16;background:url('${escapeHtml(a.backgroundUrl)}') center/cover;border-radius:8px;cursor:pointer;border:2px solid ${a.id === state.selectedAccountId ? 'var(--primary)' : 'transparent'};display:flex;align-items:flex-end;justify-content:center;padding:4px;">
+      <span style="font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8);text-align:center;">${escapeHtml(a.label)}</span>
+    </div>
+  `).join('');
+  const empty = withBackground.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:12px 0;">No templates yet — open the template manager to add an account and upload a background.</div>` : '';
+  return `
+    <div class="overlay" onclick="if(event.target===this) closeTemplatePicker()">
+      <div class="modal" style="max-width:380px;">
+        <div class="modal-header">
+          <strong>Choose a Template</strong>
+          <button class="btn-icon" style="background:none;color:var(--muted);" onclick="closeTemplatePicker()">&times;</button>
+        </div>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">${tiles}${empty}</div>
+      </div>
+    </div>
+  `;
+}
+
+function openTemplatePicker() { state.templatePickerOpen = true; renderPanel(); }
+function closeTemplatePicker() { state.templatePickerOpen = false; renderPanel(); }
+function pickTemplate(accountId) { state.selectedAccountId = accountId; state.templatePickerOpen = false; renderPanel(); }
+function clearTemplate() { state.selectedAccountId = null; renderPanel(); }
+
+// --- Accounts modal ------------------------------------------------------
+function renderAccountsModalList() {
+  const list = document.getElementById('accounts-modal-list');
+  if (!list) return;
+  document.getElementById('accounts-modal-empty').style.display = state.accounts.length ? 'none' : 'block';
+  list.innerHTML = state.accounts.map(a => `
+    <div class="tpl-row fade-in">
+      <div style="width:36px;height:64px;border-radius:6px;flex-shrink:0;background:${a.backgroundUrl ? `url('${escapeHtml(a.backgroundUrl)}') center/cover` : 'var(--card2)'};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">${a.backgroundUrl ? '' : '—'}</div>
+      <div class="tpl-row-info"><div class="tpl-row-title">${escapeHtml(a.label)}</div><div style="font-size:11px;color:var(--muted);">${a.backgroundUrl ? 'Background set' : 'No background'}</div></div>
+      <div class="tpl-row-actions">
+        <button class="btn-icon" style="background:none;border:1px solid var(--border);color:var(--muted);" onclick="startBackgroundUpload('${a.id}')" title="${a.backgroundUrl ? 'Replace' : 'Upload'} background">${UPLOAD_ICON}</button>
+        <button class="btn-icon" style="background:none;border:1px solid var(--border);color:var(--muted);" onclick="deleteAccountFromModal('${a.id}')" title="Delete account">${TRASH_ICON}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openAccountsModal() {
+  if (state.accounts.length === 0) {
+    const res = await fetch('/api/accounts');
+    state.accounts = res.ok ? await res.json() : [];
+  }
+  renderAccountsModalList();
+  document.getElementById('accounts-modal-overlay').style.display = 'flex';
+}
+function closeAccountsModal() {
+  document.getElementById('accounts-modal-overlay').style.display = 'none';
+  renderPanel();
+}
+
+async function addAccountFromModal() {
+  const input = document.getElementById('accounts-modal-new-input');
+  const label = input.value.trim();
+  if (!label) return;
+  const res = await fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }) });
+  if (!res.ok) { alert('Failed to add account.'); return; }
+  const account = await res.json();
+  state.accounts.push(account);
+  input.value = '';
+  renderAccountsModalList();
+  startBackgroundUpload(account.id);
+}
+
+async function deleteAccountFromModal(accountId) {
+  if (!confirm('Delete this account and its background?')) return;
+  await fetch(`/api/accounts/${accountId}`, { method: 'DELETE' });
+  state.accounts = state.accounts.filter(a => a.id !== accountId);
+  if (state.selectedAccountId === accountId) state.selectedAccountId = null;
+  renderAccountsModalList();
+}
+
+function startBackgroundUpload(accountId) {
+  state.settingsUploadTargetId = accountId;
+  document.getElementById('settings-background-input').click();
+}
+
+async function uploadBackground(event) {
+  const file = event.target.files && event.target.files[0];
+  const accountId = state.settingsUploadTargetId;
+  if (!file || !accountId) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`/api/accounts/${accountId}/background`, { method: 'POST', body: formData });
+  event.target.value = '';
+  if (!res.ok) { alert('Failed to upload background.'); return; }
+  const { backgroundKey, backgroundUrl } = await res.json();
+  const account = state.accounts.find(a => a.id === accountId);
+  if (account) { account.backgroundKey = backgroundKey; account.backgroundUrl = backgroundUrl; }
+  renderAccountsModalList();
+  renderPanel();
+}
+
+function toggleMirror() { state.mirror = !state.mirror; renderPanel(); }
+function onLinksInput() { state.linksText = document.getElementById('links-input').value; }
+
+// --- Generate + poll -----------------------------------------------------
+async function generate() {
+  const linksEl = document.getElementById('links-input');
+  if (linksEl) state.linksText = linksEl.value;
+  const urls = state.linksText.split('\n').map(s => s.trim()).filter(Boolean);
+  if (urls.length === 0) { alert('Paste at least one link.'); return; }
+  const account = state.accounts.find(a => a.id === state.selectedAccountId);
+  const mode = account ? 'template' : 'raw';
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    const res = await fetch('/api/batches', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountId: account ? account.id : null, mode, mirror: state.mirror, urls }),
+    });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Failed to start batch.'); return; }
+    const { batchId } = await res.json();
+    state.batchId = batchId;
+    state.jobs = [];
+    const seedAvgMs = getStoredAvgMs(mode) || DEFAULT_AVG_RENDER_MS;
+    const seedEtaSeconds = Math.round((seedAvgMs / 1000) * urls.length / BATCH_CONCURRENCY);
+    state.etaDeadline = seedEtaSeconds > 0 ? Date.now() + seedEtaSeconds * 1000 : null;
+    renderPanel();
+    pollBatch();
+    state.pollTimer = setInterval(pollBatch, 3000);
+    startEtaTicker();
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate';
+  }
+}
+
+async function pollBatch() {
+  if (!state.batchId) return;
+  const res = await fetch(`/api/batches/${state.batchId}`);
+  if (!res.ok) return;
+  state.jobs = await res.json();
+  const etaSeconds = estimateEtaSeconds(state.jobs);
+  state.etaDeadline = (etaSeconds !== null && etaSeconds > 0) ? Date.now() + etaSeconds * 1000 : null;
+  const container = document.getElementById('panel-body');
+  if (container) container.innerHTML = resultsHtml();
+  const allDone = state.jobs.every(j => j.status === 'rendered' || j.status === 'failed');
+  if (allDone) {
+    if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+    if (state.etaTickTimer) { clearInterval(state.etaTickTimer); state.etaTickTimer = null; }
+  }
+}
+
+// Per-mode render-duration history, persisted across batches/sessions on
+// this device -- lets the first second of a brand-new batch show a real
+// estimate instead of nothing, and gets more accurate over time.
+function etaStorageKey(mode) { return `avgRenderMs_${mode}`; }
+function getStoredAvgMs(mode) {
+  try {
+    const v = parseFloat(localStorage.getItem(etaStorageKey(mode)));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch { return null; }
+}
+function setStoredAvgMs(mode, avgMs) {
+  try { localStorage.setItem(etaStorageKey(mode), String(Math.round(avgMs))); } catch {}
+}
+function estimateEtaSeconds(jobs) {
+  const remaining = jobs.filter(j => j.status !== 'rendered' && j.status !== 'failed').length;
+  if (remaining === 0) return 0;
+  const mode = (jobs.length && jobs[0].backgroundKey) ? 'template' : 'raw';
+  const renderedDurationsMs = jobs.filter(j => j.status === 'rendered' && j.renderedAt && j.createdAt).map(j => j.renderedAt - j.createdAt);
+  let avgMs;
+  if (renderedDurationsMs.length > 0) {
+    avgMs = renderedDurationsMs.reduce((a, b) => a + b, 0) / renderedDurationsMs.length;
+    setStoredAvgMs(mode, avgMs);
+  } else {
+    avgMs = getStoredAvgMs(mode) || DEFAULT_AVG_RENDER_MS;
+  }
+  return Math.round((avgMs / 1000) * remaining / BATCH_CONCURRENCY);
+}
+function formatEta(seconds) {
+  if (seconds < 60) return `~${seconds}s`;
+  const m = Math.floor(seconds / 60), s = seconds % 60;
+  return `~${m}m ${s}s`;
+}
+function etaDisplayText() {
+  if (!state.etaDeadline) return '';
+  const remaining = Math.max(0, Math.round((state.etaDeadline - Date.now()) / 1000));
+  return remaining > 0 ? ` • ${formatEta(remaining)} left` : '';
+}
+function startEtaTicker() {
+  if (state.etaTickTimer) clearInterval(state.etaTickTimer);
+  state.etaTickTimer = setInterval(() => {
+    const el = document.getElementById('eta-text');
+    if (el) el.textContent = etaDisplayText();
+  }, 1000);
+}
+
+function resultsHtml() {
+  const total = state.jobs.length;
+  const done = state.jobs.filter(j => j.status === 'rendered' || j.status === 'failed').length;
+  const renderedCount = state.jobs.filter(j => j.status === 'rendered').length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const allDone = total > 0 && done === total;
+
+  const cards = state.jobs.map((j, i) => {
+    const inProgress = IN_PROGRESS_STATUSES.includes(j.status);
+    return `
+    <div style="width:100px;">
+      ${j.status === 'rendered'
+        ? `<video src="${escapeHtml(j.renderedUrl)}" muted style="width:100px;height:178px;object-fit:cover;border-radius:6px;background:#000;"></video>`
+        : `<div style="width:100px;height:178px;border-radius:6px;background:var(--card2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:10px;color:var(--muted);text-align:center;padding:6px;">${inProgress ? '<span class="spinner"></span>' : ''}${j.status === 'failed' ? escapeHtml(j.error || 'Failed') : JOB_STATUS_LABELS[j.status] || j.status}</div>`}
+      <div style="font-size:10px;text-align:center;margin-top:4px;color:var(--muted);">${i + 1}. ${JOB_STATUS_LABELS[j.status] || j.status}</div>
+      ${j.status === 'rendered' ? `<button style="width:100%;margin-top:4px;font-size:10px;padding:6px;" onclick="downloadJob('${j.id}')">Download</button>` : ''}
+    </div>
+  `;
+  }).join('');
+
+  return `
+    <div class="fade-in">
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
+        <span>${done}/${total} done${!allDone ? '<span class="spinner" style="margin-left:8px;vertical-align:middle;"></span>' : ''}<span id="eta-text">${etaDisplayText()}</span></span>
+        <span>${pct}%</span>
+      </div>
+      <div style="height:6px;border-radius:3px;background:var(--card2);overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--primary);transition:width 0.3s;"></div></div>
+    </div>
+    <div class="grid" style="margin-bottom:14px;">${cards}</div>
+    <div class="row">
+      <button class="btn-primary" style="margin:0;width:auto;flex:1;" id="download-all-btn" onclick="downloadAll()" ${renderedCount === 0 ? 'disabled' : ''}>Download all (${renderedCount})</button>
+      <button style="flex:1;" onclick="resetBatch()">Reset</button>
+    </div>
+    </div>
+  `;
+}
+
+function downloadJob(jobId) {
+  const job = state.jobs.find(j => j.id === jobId);
+  if (!job || !job.renderedUrl) return;
+  downloadFile(job.renderedUrl, `${job.id}.mp4`);
+}
+
+async function downloadAll() {
+  if (!state.batchId) return;
+  const renderedJobs = state.jobs.filter(j => j.status === 'rendered' && j.renderedUrl);
+  if (renderedJobs.length === 0) return;
+  const btn = document.getElementById('download-all-btn');
+  const setLabel = (text) => { if (btn) btn.textContent = text; };
+  if (btn) { btn.disabled = true; setLabel('Preparing…'); }
+  try {
+    // A .zip is a dead end on an iPhone -- Files can't extract one without
+    // a third-party app. Any mobile browser with navigator.share is
+    // treated as "can save to the gallery"; the zip is the fallback for
+    // desktop or a mobile browser with no share API at all.
+    if (isMobileDevice() && navigator.share) {
+      const fetchAsFile = async (j) => {
+        const fres = await fetch(`/api/download-proxy?url=${encodeURIComponent(j.renderedUrl)}`);
+        if (!fres.ok) throw new Error('fetch failed');
+        const blob = await fres.blob();
+        return new File([blob], `${j.id}.mp4`, { type: blob.type || 'video/mp4' });
+      };
+      const probeFiles = renderedJobs.map(j => new File([], `${j.id}.mp4`, { type: 'video/mp4' }));
+      if (navigator.canShare && navigator.canShare({ files: probeFiles })) {
+        try {
+          const files = await Promise.all(renderedJobs.map(fetchAsFile));
+          await navigator.share({ files });
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+      for (let i = 0; i < renderedJobs.length; i++) {
+        setLabel(`Saving ${i + 1}/${renderedJobs.length}…`);
+        try {
+          const file = await fetchAsFile(renderedJobs[i]);
+          await navigator.share({ files: [file] });
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+      return;
+    }
+    const res = await fetch(`/api/batches/${state.batchId}/download-all`);
+    if (!res.ok) { alert('Failed to build zip.'); return; }
+    const blob = await res.blob();
+    downloadBlob(blob, `reels-batch-${state.batchId}.zip`);
+  } catch (err) {
+    alert('Failed to download all.');
+  } finally {
+    if (btn) { btn.disabled = false; setLabel(`Download all (${renderedJobs.length})`); }
+  }
+}
+</script>
+</body>
+</html>
