@@ -58,6 +58,10 @@ npm start
 
 Visit `http://localhost:3000` (or whatever `PORT`/`APP_URL` you configured) and log in with `ADMIN_PASSWORD`.
 
+### Setting it up with Claude Code
+
+If you're using [Claude Code](https://claude.com/claude-code) (or a similar coding agent), just open this folder and ask it to set the project up — `CLAUDE.md` has a step-by-step checklist it'll follow, including generating the random secrets for you and walking through what to paste in from Telegram/your bucket provider.
+
 ## Architecture
 
 A single Express server with no framework beyond that — flat JSON-file stores under `DATA_DIR` (accounts, jobs, pool entries), no database. Media (rendered videos, background templates, pool thumbnails) lives in your S3-compatible bucket, referenced by public URL. All video work (`yt-dlp` download, `ffprobe`/`ffmpeg` compositing and codec verification) happens via subprocess calls, not a library — keeps the Node process itself lightweight and lets you upgrade `yt-dlp` independently of the app whenever Instagram changes something upstream.
